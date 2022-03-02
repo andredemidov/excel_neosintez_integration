@@ -6,6 +6,7 @@ import os
 from time import ctime
 import neosintez  # собственный модуль
 
+
 url = 'http://construction.irkutskoil.ru/'
 xl_directory = open('xl_directory.txt', encoding='utf-8').read()
 atr_data = pd.read_excel('default_attributes.xlsx')  # дата фрейм для мэпинга атрибутов и колонок эксель файла
