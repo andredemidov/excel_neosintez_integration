@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import os
 from time import ctime
+import neosintez  # собственный модуль
 
 url = 'http://construction.irkutskoil.ru/'
 xl_directory = open('xl_directory.txt', encoding='utf-8').read()
@@ -14,19 +15,6 @@ class_id = 'b0379bb3-cc70-e911-8115-817c3f53a992'  # класс для кажд�
 attribute_id = '4903a891-f402-eb11-9110-005056b6948b'  # id атрибуто по которому осуществляется поиск. Здесь это номер потребности
 mvz_attribute_id = '626370d8-ad8f-ec11-911d-005056b6948b'
 start_time = datetime.now()
-
-
-def authentification():  # функция возвращает токен для атуентификации. Учетные данные берет из файла
-    req_url = url + 'connect/token'
-    f = open('auth_data.txt')
-    payload = f.read()
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    token = json.loads(requests.post(req_url, data=payload, headers=headers).text)['access_token']
-
-    return token
-
 
 def get_req_body(row):  # получене тела PUT запроса для строки файла эксель
     row_body = []
@@ -44,7 +32,7 @@ def get_req_body(row):  # получене тела PUT запроса для с
             atr_value = atr_value.strftime("%Y-%m-%d")
         elif atr_type == 8 and atr['name'] == 'ЕИ':  # предусмотрена только обработка ЕИ
             atr_value = atr_value.replace('.', '')
-            response = find_item(item_number=atr_value, attribute_id='ec653d26-8375-e911-8115-817c3f53a992', folder_id='df0921c1-f46f-e911-8115-817c3f53a992', class_id='0e1d8277-d859-e911-8115-817c3f53a992')
+            response = json.loads(neosintez.find_item(url=url, token=token, attribute_value=atr_value, attribute_id='ec653d26-8375-e911-8115-817c3f53a992', folder_id='df0921c1-f46f-e911-8115-817c3f53a992', class_id='0e1d8277-d859-e911-8115-817c3f53a992').text)
             if response['Total'] == 1:
                 n_id = response['Result'][0]['Object']['Id']  # извлечение id из ответа на поисковый запрос
                 atr_value = {'Id': n_id, 'Name': 'forvalidation'}
@@ -69,101 +57,27 @@ def import_excel_to_folder(folder_id, xl_data):
         item_name = row['Номенклатурная позиция']
         neosintez_id = get_neosintez_id(item_number, attribute_id, folder_id, item_name, class_id)
         req_body = get_req_body(row)
-        result = put_attributes(req_body, neosintez_id)
-        if result == 200:
+        result = neosintez.put_attributes(url, token, req_body, neosintez_id)
+        if result.status_code == 200:
             counter_success += 1
         else:
             counter_exception += 1
         # print(f'запрос по обновлению потребности {item_number} выполнен со статусом {result}')  # для дебага
     return counter_success, counter_exception
 
-
-def put_attributes(req_body, neosintez_id):
-    req_url = url + f'api/objects/{neosintez_id}/attributes'
-    payload = json.dumps(req_body)
-
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json-patch+json'
-    }
-    response = requests.put(req_url, headers=headers, data=payload)
-    if response.status_code != 200:
-        print(req_body)
-        print(response.text)
-        pass
-    return response.status_code
-
-
-def find_item(item_number, attribute_id, folder_id, class_id):  # возвращает ответ поискового запроса целиком
-    req_url = url + 'api/objects/search?take=30'
-    payload = json.dumps({
-        "Filters": [
-            {
-                "Type": 4,
-                "Value": folder_id  # id узла поиска в Неосинтез
-            },
-            {
-                "Type": 5,
-                "Value": class_id  # id класса в Неосинтез
-            }
-        ],
-        "Conditions": [  # условия для поиска в Неосинтез
-            {
-                "Type": 1,  # тип атрибута 1 - строка
-                "Attribute": attribute_id,  # id атрибута в Неосинтез
-                "Operator": 1,  # оператор сравнения. 1 - равно
-                "Value": item_number  # значение атрибута в Неосинтез
-            }
-        ]
-    })
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json-patch+json',
-        'X-HTTP-Method-Override': 'GET'
-    }
-    response = json.loads(
-        requests.post(req_url, headers=headers, data=payload).text)  # поисковый запрос с десериализацией ответа
-    return response
-
-
-def create_item(item_number, attribute_id, folder_id, item_name, class_id):  # возвращает neosintez_id созданной записи или папки
-    req_url = url + f'api/objects?parent={folder_id}'
-    payload = json.dumps({
-        "Id": "00000000-0000-0000-0000-000000000000",
-        "Name": item_name,
-        "Entity": {
-            "Id": class_id,
-            "Name": "forvalidation"
-        }
-    })
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json-patch+json'
-    }
-    response = json.loads(
-        requests.post(req_url, headers=headers, data=payload).text)  # создание объекта с десериализацией ответа
-    neosintez_id = response['Id']
-
-    req_body = [{"Name": "forvalidation", "Value": item_number, "Type": 2, "Id": attribute_id}]
-    put_attributes(req_body, neosintez_id) # заполнить атрибут с номером МВЗ или номером потребности
-
-    return neosintez_id
-
-
 def get_neosintez_id(item_number, attribute_id, folder_id,
                      item_name, class_id):  # функция ищет существующую потребность по номеру и создает новую если не находит. Возвращает id из Неосинтеза
-    response = find_item(item_number, attribute_id, folder_id, class_id)
+    response = json.loads(neosintez.find_item(url, token, item_number, attribute_id, folder_id, class_id).text)
     total = response['Total']  # в ответе total - это количество найденных результатов по условию поиска
     if total == 1:
         neosintez_id = response['Result'][0]['Object']['Id']  # извлечение id из ответа на поисковый запрос
         # print('объект найден')
     elif total == 0:
-        neosintez_id = create_item(item_number, attribute_id, folder_id, item_name, class_id)
-        # print('объект будет создан')
+        neosintez_id, response = neosintez.create_item(url, token, item_number, attribute_id, folder_id, item_name, class_id)
+        if not neosintez_id:
+            print(f'ошибка создания объекта {item_name}. Ответ: {response.text}')
     else:
+        neosintez_id = ''
         pass  # это ошибка. Потребностей с одним и тем же номером быть не должно
     return neosintez_id
 
@@ -209,9 +123,11 @@ def get_xl_data(mvz):
     return xl_data
 
 
-try:
-    token = authentification()  # токен для подключения к api
-except:
+
+f = open('auth_data.txt')
+aut_string = f.read()
+token = neosintez.authentification(url=url, aut_string=aut_string)
+if not token:
     print('Ошибка аутентификации')
 
 
