@@ -19,6 +19,7 @@ attribute_id = '4903a891-f402-eb11-9110-005056b6948b'  # id атрибуто п�
 mvz_attribute_id = '626370d8-ad8f-ec11-911d-005056b6948b'
 start_time = datetime.now()
 
+
 def get_by_re(text, regexp):
     match = re.search(regexp, text)
     if match:
@@ -59,9 +60,10 @@ def get_req_body(row):  # получене тела PUT запроса для с
         row_body.append(atr_body)
 
     for j, atr in atr_data_re.iterrows():  # дополнительные атрибуты
-        text = str(row[atr['name']])
-        regexp = str(row[atr['regexp']])
+        text = str(row[atr['name']])[:10]
+        regexp = str(atr['regexp'])
         atr_value = get_by_re(text, regexp)
+
         if atr_value == 'nan':
             continue
         atr_id = atr['id']
@@ -147,13 +149,8 @@ def get_xl_data(mvz):
     xl_data = pd.read_excel(f_path, sheet_name='TDSheet', converters={'Код (НСИ)': str, 'Потребность.Номер': str})
     return xl_data
 
-
-
-f = open('auth_data.txt')
-aut_string = f.read()
-token = neosintez.authentification(url=url, aut_string=aut_string)
-if not token:
-    print('Ошибка аутентификации')
+def add_log(messege):
+    log.write(f'{datetime.now().strftime("%Y-%m-%d_%H.%M.%S")}: {messege}' + '\n')
 
 
 def integration(): # главный процесс
@@ -163,14 +160,18 @@ def integration(): # главный процесс
     counter = 0
     for folder in folders_dict:
         print(f'Количество МВЗ по текущей папке {len(folders_dict[folder])}') # количество МВЗ по текущей папке
+        add_log(f'Количество МВЗ по текущей папке {len(folders_dict[folder])}')
         for mvz in folders_dict[folder]:
 
             print(f'Начат импорт МВЗ {mvz} в папку {folder}. ', end='')
+            add_log(f'Начат импорт МВЗ {mvz} в папку {folder}. ')
             try:
                 xl_data = get_xl_data(mvz)  # получить дата фрейм из файла эксель по нужным мвз
                 print(f'Файл {mvz} найден. Строк в эксель всего {len(xl_data.index)}')
+                add_log(f'Файл {mvz} найден. Строк в эксель всего {len(xl_data.index)}')
             except:
                 print(f'Файл {mvz} не найден')
+                add_log(f'Файл {mvz} не найден')
                 continue
 
             counter += 1
@@ -179,11 +180,26 @@ def integration(): # главный процесс
 
             counter_success , counter_exception = import_excel_to_folder(folder_id, xl_data)
             print(f'{counter}. Успешно обновлено {counter_success} строк, ошибок {counter_exception}')
+            add_log(f'{counter}. Успешно обновлено {counter_success} строк, ошибок {counter_exception}')
 
     print(f'Обработано файлов {counter}')
+    add_log(f'Обработано файлов {counter}')
+
+file_name = f'log/{datetime.now().strftime("%Y-%m-%d_%H.%M.%S")}.txt'
+log = open(file_name, 'w')
+add_log('старт')
+
+
+f = open('auth_data.txt')
+aut_string = f.read()
+token = neosintez.authentification(url=url, aut_string=aut_string)
+if not token:
+    print('Ошибка аутентификации')
+
 
 integration()
 
 print(datetime.now() - start_time)
+add_log(f'длительность {str(datetime.now() - start_time)}')
 
-
+log.close()
