@@ -5,11 +5,13 @@ from datetime import datetime
 import os
 from time import ctime
 import neosintez  # собственный модуль
+import re
 
 
 url = 'http://construction.irkutskoil.ru/'
 xl_directory = open('xl_directory.txt', encoding='utf-8').read()
 atr_data = pd.read_excel('default_attributes.xlsx')  # дата фрейм для мэпинга атрибутов и колонок эксель файла
+atr_data_re = pd.read_excel('re_attributes.xlsx') # дата фрейм для мэпинга атрибутов и колонок эксель файла - дополнительные атрибуты
 folder_class_id = '3b417b9a-bd8e-ec11-911d-005056b6948b'  # класс папки, в которую идет импорт данных
 mvz_folder_class_id = '288a12fc-ad8f-ec11-911d-005056b6948b'  # класс промежуточной папки создаваемой по каждому мвз
 class_id = 'b0379bb3-cc70-e911-8115-817c3f53a992'  # класс для каждой записи импортируемого файла
@@ -17,10 +19,19 @@ attribute_id = '4903a891-f402-eb11-9110-005056b6948b'  # id атрибуто п�
 mvz_attribute_id = '626370d8-ad8f-ec11-911d-005056b6948b'
 start_time = datetime.now()
 
+def get_by_re(text, regexp):
+    match = re.search(regexp, text)
+    if match:
+        result = match.group(1)
+    else:
+        result = 'nan'
+    return result
+
+
 def get_req_body(row):  # получене тела PUT запроса для строки файла эксель
     row_body = []
 
-    for j, atr in atr_data.iterrows():
+    for j, atr in atr_data.iterrows(): # основные атрибуты
         atr_value = str(row[atr['name']])
         if atr_value == 'nan':
             continue
@@ -42,6 +53,19 @@ def get_req_body(row):  # получене тела PUT запроса для с
         elif atr_type == 8:
             continue
 
+        atr_body = {}
+        atr_body['Name'], atr_body['Value'], atr_body['Type'], atr_body[
+            'Id'] = 'forvalidation', atr_value, atr_type, atr_id
+        row_body.append(atr_body)
+
+    for j, atr in atr_data_re.iterrows():  # дополнительные атрибуты
+        text = str(row[atr['name']])
+        regexp = str(row[atr['regexp']])
+        atr_value = get_by_re(text, regexp)
+        if atr_value == 'nan':
+            continue
+        atr_id = atr['id']
+        atr_type = atr['type']
         atr_body = {}
         atr_body['Name'], atr_body['Value'], atr_body['Type'], atr_body[
             'Id'] = 'forvalidation', atr_value, atr_type, atr_id
