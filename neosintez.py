@@ -31,8 +31,19 @@ def put_attributes(url, token, req_body, neosintez_id):  # функция обн
     return response
 
 
-def find_item(url, token, attribute_value, attribute_id, folder_id, class_id):  # возвращает ответ поискового запроса целиком
+def find_item(*, url, token, attribute_value=None, item_name, folder_id, class_id, attribute_id=None, operator=1):  # возвращает ответ поискового запроса целиком
     req_url = url + 'api/objects/search?take=30000'
+    condition_dict = {}
+    condition_dict['Value'] = item_name # названия
+    condition_dict['Operator'] = operator  # оператор сравнения. 1 - равно
+    if attribute_id is not None:
+        condition_dict['Value'] = attribute_value # значение атрибута
+        condition_dict['Type'] = 1  # тип поиска
+        condition_dict['Attribute'] = attribute_id # id атрибута в Неосинтез
+    else:
+        condition_dict['Type'] = 2
+    conditions = [condition_dict]
+
     payload = json.dumps({
         "Filters": [
             {
@@ -44,14 +55,7 @@ def find_item(url, token, attribute_value, attribute_id, folder_id, class_id):  
                 "Value": class_id  # id класса в Неосинтез
             }
         ],
-        "Conditions": [  # условия для поиска в Неосинтез
-            {
-                "Type": 1,  # тип атрибута 1 - строка
-                "Attribute": attribute_id,  # id атрибута в Неосинтез
-                "Operator": 1,  # оператор сравнения. 1 - равно
-                "Value": attribute_value  # значение атрибута в Неосинтез
-            }
-        ]
+        "Conditions": conditions  # условия для поиска в Неосинтез
     })
     headers = {
         'Accept': 'application/json',
@@ -63,7 +67,7 @@ def find_item(url, token, attribute_value, attribute_id, folder_id, class_id):  
     return response
 
 
-def create_item(url, token, attribute_value, attribute_id, folder_id, item_name, class_id):  # возвращает neosintez_id созданной сущности
+def create_item(*, url, token, attribute_value=None, attribute_id=None, folder_id, item_name, class_id):  # возвращает neosintez_id созданной сущности
     req_url = url + f'api/objects?parent={folder_id}'
     payload = json.dumps({
         "Id": "00000000-0000-0000-0000-000000000000",
@@ -83,7 +87,7 @@ def create_item(url, token, attribute_value, attribute_id, folder_id, item_name,
 
     if response.status_code == 200:
         neosintez_id = response_text['Id']
-        if attribute_value:  # если передан так же атрибут для заполнения, то его заполнить у созданного объекта
+        if attribute_value != None:  # если передан так же атрибут для заполнения, то его заполнить у созданного объекта
             req_body = [{"Name": "forvalidation", "Value": attribute_value, "Type": 2, "Id": attribute_id}]
             put_attributes(url=url,token=token, req_body=req_body, neosintez_id=neosintez_id) # заполнить атрибут
     else:
