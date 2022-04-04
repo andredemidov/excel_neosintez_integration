@@ -162,10 +162,12 @@ def get_xl_data(mvz):
     xl_new = pd.read_excel(f_path, sheet_name='TDSheet', converters={'Код (НСИ)': str, 'Потребность.Номер': str})
     xl_new.sort_values('Подобъект', inplace=True)
     f_prev_path = xl_directory + f'prev/{mvz}_prev.xlsx'
-    xl_prev = pd.read_excel(f_prev_path, sheet_name='TDSheet', converters={'Код (НСИ)': str, 'Потребность.Номер': str})
-
-    xl_data = pd.concat([xl_new, xl_prev]).drop_duplicates(keep=False)
-    xl_data.drop_duplicates('Потребность.Номер', inplace=True)
+    if os.path.isfile(f_prev_path):
+        xl_prev = pd.read_excel(f_prev_path, sheet_name='TDSheet', converters={'Код (НСИ)': str, 'Потребность.Номер': str})
+        xl_data = pd.concat([xl_new, xl_prev]).drop_duplicates(keep=False)
+        xl_data.drop_duplicates('Потребность.Номер', inplace=True)
+    else:
+        xl_data = xl_new
 
     #xl_data['hash'] = pd.Series((hash(tuple(row))) for _, row in xl_data.iterrows())
     #xl_prev['hash'] = pd.Series((hash(tuple(row))) for _, row in xl_prev.iterrows())
