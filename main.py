@@ -6,6 +6,7 @@ import os
 from time import ctime
 import neosintez  # собственный модуль
 import re
+import shutil
 
 
 url = 'http://construction.irkutskoil.ru/'
@@ -158,9 +159,29 @@ def get_xl_data(mvz):
     f_list = [f for f in os.listdir(path=xl_directory) if mvz in f and 'ЗО' in f]
     f_date = [ctime(os.path.getctime(xl_directory+f)) for f in f_list]
     f_path = xl_directory + f_list[f_date.index(max(f_date))]
-    xl_data = pd.read_excel(f_path, sheet_name='TDSheet', converters={'Код (НСИ)': str, 'Потребность.Номер': str})
-    xl_data.sort_values('Подобъект', inplace=True)
-    return xl_data
+    xl_new = pd.read_excel(f_path, sheet_name='TDSheet', converters={'Код (НСИ)': str, 'Потребность.Номер': str})
+    xl_new.sort_values('Подобъект', inplace=True)
+    f_prev_path = xl_directory + f'prev/{mvz}_prev.xlsx'
+    xl_prev = pd.read_excel(f_prev_path, sheet_name='TDSheet', converters={'Код (НСИ)': str, 'Потребность.Номер': str})
+
+    xl_data = pd.concat([xl_new, xl_prev]).drop_duplicates(keep=False)
+    xl_data.drop_duplicates('Потребность.Номер', inplace=True)
+
+    #xl_data['hash'] = pd.Series((hash(tuple(row))) for _, row in xl_data.iterrows())
+    #xl_prev['hash'] = pd.Series((hash(tuple(row))) for _, row in xl_prev.iterrows())
+    count_new = len(xl_new.index)
+    count_unique = len(xl_data.index)
+
+
+    shutil.copy2(f_path, f_prev_path)
+    return xl_data, count_new, count_unique
+
+
+def get_xl_data_previous(mvz):
+    xl_data_prev = 's'
+    pass
+
+
 
 def add_log(messege):
     log.write(f'{datetime.now().strftime("%Y-%m-%d_%H.%M.%S")}: {messege}' + '\n')
@@ -179,9 +200,9 @@ def integration(): # главный процесс
             print(f'Начат импорт МВЗ {mvz} в папку {folder}. ', end='')
             add_log(f'Начат импорт МВЗ {mvz} в папку {folder}. ')
             try:
-                xl_data = get_xl_data(mvz)  # получить дата фрейм из файла эксель по нужным мвз
-                print(f'Файл {mvz} найден. Строк в эксель всего {len(xl_data.index)}')
-                add_log(f'Файл {mvz} найден. Строк в эксель всего {len(xl_data.index)}')
+                xl_data, count_new, count_unique = get_xl_data(mvz)  # получить дата фрейм из файла эксель по нужным мвз
+                print(f'Файл {mvz} найден. Строк в эксель всего {count_new}, обновить {count_unique}')
+                add_log(f'Файл {mvz} найден. Строк в эксель всего {count_new}, обновить {count_unique}')
             except:
                 print(f'Файл {mvz} не найден')
                 add_log(f'Файл {mvz} не найден')
@@ -225,3 +246,6 @@ print(datetime.now() - start_time)
 add_log(f'длительность {str(datetime.now() - start_time)}')
 
 log.close()
+
+
+get_xl_data('МВЗ2829')
