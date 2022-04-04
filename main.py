@@ -179,8 +179,8 @@ def get_xl_data(mvz):
     return xl_data, count_new, count_unique
 
 
-def add_log(messege):
-    log.write(f'{datetime.now().strftime("%Y-%m-%d_%H.%M.%S")}: {messege}' + '\n')
+def add_log(message):
+    log.write(f'{datetime.now().strftime("%Y-%m-%d_%H.%M.%S")}: {message}' + '\n')
 
 
 def integration(): # главный процесс
@@ -221,15 +221,15 @@ with open('xl_directory.txt', encoding='utf-8') as f:
     xl_directory = f.read()
 
 atr_data = pd.read_excel('default_attributes.xlsx')  # дата фрейм для мэпинга атрибутов и колонок эксель файла
-atr_data_re = pd.read_excel('re_attributes.xlsx')  # дата фрейм для мэпинга атрибутов и колонок эксель файла - дополнительные атрибуты
+
+with open('auth_data.txt') as f:
+    aut_string = f.read()
 
 
 file_name = f'log/{datetime.now().strftime("%Y-%m-%d_%H.%M.%S")}.txt'
 log = open(file_name, 'w')
 add_log('старт')
 
-with open('auth_data.txt') as f:
-    aut_string = f.read()
 
 token = neosintez.authentification(url=url, aut_string=aut_string)
 if not token:
