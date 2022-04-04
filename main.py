@@ -179,12 +179,6 @@ def get_xl_data(mvz):
     return xl_data, count_new, count_unique
 
 
-def get_xl_data_previous(mvz):
-    xl_data_prev = 's'
-    pass
-
-
-
 def add_log(messege):
     log.write(f'{datetime.now().strftime("%Y-%m-%d_%H.%M.%S")}: {messege}' + '\n')
 
@@ -248,6 +242,3 @@ print(datetime.now() - start_time)
 add_log(f'длительность {str(datetime.now() - start_time)}')
 
 log.close()
-
-
-get_xl_data('МВЗ2829')
