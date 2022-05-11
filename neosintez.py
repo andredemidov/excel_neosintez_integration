@@ -94,3 +94,13 @@ def create_item(*, url, token, attribute_value=None, attribute_id=None, folder_i
         neosintez_id = ''  # возвращает пустую строку в случае ошибки запроса
 
     return neosintez_id, response
+
+def delete_item(url, token, neosintez_id, bin):
+    req_url = url + f'api/objects/{neosintez_id}/parent?parentId={bin}'
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json-patch+json'
+    }
+    response = requests.put(req_url, headers=headers)
+    return response
