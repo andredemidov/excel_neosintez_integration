@@ -278,6 +278,7 @@ def integration():
         for mvz in folders_dict[folder]:
 
             print(f'{get_time()}: Начат импорт МВЗ {mvz} в папку {folder}. ', end='', file=log)
+            log.flush()
 
             try:
 
@@ -296,13 +297,16 @@ def integration():
             # опредедление сущностей для удаления
             number_set, del_double_id_tuple, del_id_tuple = get_number_set(folder_id, new_number_set)
             print(f'{get_time()}: Количество уникальных в Неосинтез {len(number_set)}, количество дублируемых потребностей {len(del_double_id_tuple)}, количество отсутствующих в новой выгрузке {len(del_id_tuple)}', file=log)
+            log.flush()
 
             # удаление (перенос)
             del_set = set(del_id_tuple + del_double_id_tuple)
+            print(del_set)
             for id in del_set:
                 response = neosintez.delete_item(url, token, id, bin)
                 if response.status_code != 200:
                     print(f'{get_time()}: Не удалось удалить сущность {id}', file=log)
+            log.flush()
 
             #  интеграция записей (создание/ обновление) в Неосинтезе
             counter_success, counter_exception = import_excel_to_folder(folder_id, xl_data)
@@ -312,6 +316,7 @@ def integration():
 
 
             print(f'{get_time()}: {counter}. Успешно обновлено {counter_success} строк, ошибок {counter_exception}. В итоге потребностей {amount_final}', file=log)
+            log.flush()
 
     print(f'{get_time()}: Обработано файлов {counter}', file=log)
 
