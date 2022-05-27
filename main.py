@@ -260,6 +260,8 @@ def get_xl_data(mvz):
 
     # копия новой выгрузки в файл prev, чтобы в будущем сравнивать уже с ним
     shutil.copy2(f_path, f_prev_path)
+    os.remove(f_path)
+    os.remove(f_path.replace('ЗО', 'СП'))
     return xl_data, amount_new, amount_unique, new_number_set
 
 
